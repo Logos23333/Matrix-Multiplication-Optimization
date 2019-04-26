@@ -1,5 +1,5 @@
 /*************************************************************************
-	> File Name: matrixMul_one.c
+	> File Name: matrixMul_baseline.c
 	> Author: logos
 	> Mail: 838341114@qq.com 
 	> Created Time: 2019年04月18日 星期四 14时22分44秒
