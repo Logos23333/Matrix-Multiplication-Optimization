@@ -56,11 +56,7 @@ struct parameter{
 	float *a;
 	float *b;
 	float *c;
-	int i_start;
-	int i_finish;
-	int j_start;
-	int j_finish;
-
+	int number;
 };
 
 void matrix_mul_blocks(float a[M*M], float b[M*M], float c[M*M]){
@@ -100,18 +96,18 @@ void* matrix_mul(void *arg){
 	float *a=p->a;
 	float *b=p->b;
 	float *c=p->c;
-
-	int i_start=p->i_start;
-	int i_finish=p->i_finish;
-	int j_start=p->j_start;
-	int j_finish=p->j_finish;
+	int number=p->number;
 
 	const int P= N/M; //the number of a blocks in a row, divide the N*N matrix into P*P matrix
+	int size_block_thread=P/NUM_THREADS;
+	int i_start=number*size_block_thread; //the cnt thread is for the cnt row
+	int i_finish=i_start+size_block_thread;
+	int j_start=0;
+	int j_finish=P;
 
 	for(int i=i_start;i<i_finish;i++){
 		for(int j=j_start;j<j_finish;j++){
 
-			//printf("calculating c[%d][%d](block)\n",i,j);
 			for(int k=0; k<P; k++){
 				//c[i][j]+=a[i][k]+b[k][j];
 
@@ -121,27 +117,12 @@ void* matrix_mul(void *arg){
 
 				//init a_copy & b_copy
 				//a_copy = a[i][k]
-
-				/*
-				printf("a=\n");
-				print_matrix(a,N);
-				*/
-
 				set_small_matrix(a_copy,a,N,i,k);
 				//b_copy = b[k][j]
 				set_small_matrix(b_copy,b,N,k,j);
 
 				//block mul
 				matrix_mul_blocks(a_copy,b_copy,record);
-				
-				
-	//			printf("a_copy=\n");
-	//			print_matrix(a_copy,M);
-	//			printf("b_copy=\n");
-	//			print_matrix(b_copy,M);
-	//			printf("record=\n");
-	//			print_matrix(record,M);
-				
 
 				matrix_c_add(record,c,N,i,j);
 			}
@@ -171,13 +152,6 @@ int main(int argc, char *argv[]){
 	//matrix generation
 	matrix_gen(a,b,N,seed);
 
-	/*
-	printf("a=\n");
-	print_matrix(a,N);
-	printf("b=\n");
-	print_matrix(b,N);
-	*/
-
 	//run time calculation
 	struct timeval start;
 	struct timeval end;
@@ -192,31 +166,14 @@ int main(int argc, char *argv[]){
 	//parallel optimization
 	for(int cnt=0;cnt<NUM_THREADS;cnt++){
 
-		int i_start;
-		int i_finish;
-		int j_start;
-		int j_finish;
-
-		// the number of blocks in a row(length)
-		int P=N/M;
-		int size_block_thread=P/NUM_THREADS;
-		i_start=cnt*size_block_thread; //the cnt thread is for the cnt row
-		i_finish=i_start+size_block_thread;
-		j_start=0;
-		j_finish=P;
-
 		//parameters set value
 		parameters[cnt].N=N;
 		parameters[cnt].a=a;
 		parameters[cnt].b=b;
 		parameters[cnt].c=c;
-		parameters[cnt].i_start=i_start;
-		parameters[cnt].j_start=j_start;
-		parameters[cnt].i_finish=i_finish;
-		parameters[cnt].j_finish=j_finish;
+		parameters[cnt].number=cnt;
 
 		pthread_create(&threads[cnt],NULL,matrix_mul,&parameters[cnt]); //create thread
-		//printf("The %d thread, calculating c[%d~%d][%d~%d]\n",cnt,i_start,i_finish,j_start,j_finish);
 	}
 	
 	for(int cnt=0;cnt<NUM_THREADS;cnt++){

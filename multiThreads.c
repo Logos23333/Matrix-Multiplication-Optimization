@@ -10,7 +10,8 @@
 #include<sys/time.h>
 #include<pthread.h>
 
-#define NUM_THREADS 32
+#define NUM_THREADS 16
+#define M 8
 
 float rand_float(float s){
 	return 4*s*(1-s);
@@ -52,11 +53,7 @@ struct parameter{
 	float *a;
 	float *b;
 	float *c;
-	int i_start;
-	int i_finish;
-	int j_start;
-	int j_finish;
-	int b_size;
+	int number;
 };
 
 void* matrix_mul(void *arg){
@@ -67,22 +64,18 @@ void* matrix_mul(void *arg){
 	float *a=p->a;
 	float *b=p->b;
 	float *c=p->c;
+	int number=p->number;
 
-	int i_start=p->i_start;
-	int i_finish=p->i_finish;
-	int j_start=p->j_start;
-	int j_finish=p->j_finish;
-	int b_size=p->b_size;
+	int num=N/NUM_THREADS;
+	int i_start=number*num;
+	int i_finish=i_start+num;
 
 	for(int i=i_start;i<i_finish;i++){
 		int temp=i*N; //optimization
-		for(int j=j_start;j<j_finish;j++){
-
+		for(int j=0;j<N;j++){
 			int index=temp+j; //optimization
-
 			c[index]=0;
 			for(int k=0;k<N;k++){
-		//		printf("c[%d][%d]+=a[%d][%d]*b[%d][%d]\n",i,j,i,k,k,j);
 				c[index]+=a[temp+k]*b[k*N+j];
 				
 			}
@@ -126,32 +119,14 @@ int main(int argc, char *argv[]){
 	//parallel optimization
 	for(int cnt=0;cnt<NUM_THREADS;cnt++){
 
-		int i_start;
-		int i_finish;
-		int j_start;
-		int j_finish;
-		int b_size;
-
-		// the size of a block (length)
-		b_size=N/NUM_THREADS;
-
-		i_start=cnt*b_size; //the cnt thread is for the cnt row
-		i_finish=i_start+b_size;
-		j_start=0;
-		j_finish=N;
-		b_size=N;
 
 		//parameters set value
 		parameters[cnt].N=N;
 		parameters[cnt].a=a;
 		parameters[cnt].b=b;
 		parameters[cnt].c=c;
-		parameters[cnt].i_start=i_start;
-		parameters[cnt].j_start=j_start;
-		parameters[cnt].i_finish=i_finish;
-		parameters[cnt].j_finish=j_finish;
-		parameters[cnt].b_size=b_size;
-
+		parameters[cnt].number=cnt;
+		
 		pthread_create(&threads[cnt],NULL,matrix_mul,&parameters[cnt]); //create thread
 	}
 	
@@ -174,8 +149,8 @@ int main(int argc, char *argv[]){
 	 * code for test
 	 */
 
-//	print_matrix(a,N);
-//	print_matrix(b,N);
-//	print_matrix(c,N);
+	//print_matrix(a,N);
+	//print_matrix(b,N);
+	//print_matrix(c,N);
 	
 }

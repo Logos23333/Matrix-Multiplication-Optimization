@@ -56,10 +56,7 @@ struct parameter{
 	float *a;
 	float *b;
 	float *c;
-	int i_start;
-	int i_finish;
-	int j_start;
-	int j_finish;
+	int number;
 
 };
 
@@ -88,13 +85,15 @@ void* matrix_mul(void *arg){
 	float *a=p->a;
 	float *b=p->b;
 	float *c=p->c;
+	int number=p->number;
 
-	int i_start=p->i_start;
-	int i_finish=p->i_finish;
-	int j_start=p->j_start;
-	int j_finish=p->j_finish;
-
-	const int P= N/M; //the number of a blocks in a row, divide the N*N matrix into P*P matrix
+	// the number of blocks in a row(length)
+	const int P=N/M;
+	const int size_block_thread=P/NUM_THREADS;
+	int i_start=number*size_block_thread; //the cnt thread is for the cnt row
+	int i_finish=i_start+size_block_thread;
+	int j_start=0;
+	int j_finish=P;
 
 	for(int i=i_start;i<i_finish;i++){
 		for(int j=j_start;j<j_finish;j++){
@@ -149,28 +148,12 @@ int main(int argc, char *argv[]){
 	//parallel optimization
 	for(int cnt=0;cnt<NUM_THREADS;cnt++){
 
-		int i_start;
-		int i_finish;
-		int j_start;
-		int j_finish;
-
-		// the number of blocks in a row(length)
-		int P=N/M;
-		int size_block_thread=P/NUM_THREADS;
-		i_start=cnt*size_block_thread; //the cnt thread is for the cnt row
-		i_finish=i_start+size_block_thread;
-		j_start=0;
-		j_finish=P;
-
 		//parameters set value
 		parameters[cnt].N=N;
 		parameters[cnt].a=a;
 		parameters[cnt].b=b;
 		parameters[cnt].c=c;
-		parameters[cnt].i_start=i_start;
-		parameters[cnt].j_start=j_start;
-		parameters[cnt].i_finish=i_finish;
-		parameters[cnt].j_finish=j_finish;
+		parameters[cnt].number=cnt;
 
 		pthread_create(&threads[cnt],NULL,matrix_mul,&parameters[cnt]); //create thread
 		//printf("The %d thread, calculating c[%d~%d][%d~%d]\n",cnt,i_start,i_finish,j_start,j_finish);
