@@ -110,12 +110,9 @@ void small_matrix_mul(float *a, float *b, float *c){
 		__m256 row =_mm256_add_ps(temp1,temp2);
 
 		_mm256_storeu_ps(c0+AVX_SIZE*cnt,row);	
-
+	}
 }
 
-void matrix_add(float *a, float *b, float *c, int N){
-
-}
 void* matrix_mul(void *arg){
 	struct parameter *p;
 	p=(struct parameter *) arg;
@@ -144,35 +141,28 @@ void* matrix_mul(void *arg){
 
 				int num= M/AVX_SIZE/2; // the number of blocks in a row, now the a,b,c is a num*num matrix, AVX*AVX size each block 
 				for(int ii=0;ii<num;ii++){
-					for(int jj=0;jj<num;jj++){//calculating c[ii][jj] = sum(a[ii][kk]*b[kk][jj])
+					for(int jj=0;jj<num;jj++){//calculating c[ii][jj]. A 16*16 matrix
 
-						int cc_os = c_os +ii*AVX_SIZE*N*2 + jj*AVX_SIZE*2; //the offset of cc
+						//A11 B11 C11 init 8*8 matrix
+						for(int iii=0;iii<8;iii++)
+						//A12 B12 C12 init 8*8 matrix
+						
+						//A21 B21 C21 init
 
-						float r1[AVX_SIZE*AVX_SIZE]={0}; //record
-						for(int kk=0;kk<num;kk++){//calculating a[ii][kk]*b[kk][jj], multiplication of SSE_SIZE*SSE_SIZE matrix			
+						//A22 B22 C22 init
 
-							float r0[AVX_SIZE*AVX_SIZE]={0};
-							int aa_os= a_os + ii*AVX_SIZE*N + kk*AVX_SIZE; //the offset of aa
-							int bb_os= b_os + kk*AVX_SIZE*N + jj*AVX_SIZE; //the offset of bb
-							
+						//P1=(A11+A22)(B11+B22)
+						//P2=(A21+A22)(B11)
+						//P3=(A1)(B12-B22)
+						//P4=A22(B21-B11)
+						//P5=(A11+A12)(B22)
+						//P6=(A21-A11)(B11+B12)
+						//P7=(A12-A22)(B21+B22)
 
-								
-							}
-
-
-							for(int x=0;x<AVX_SIZE;x++){ //r1+=r0
-								for(int y=0;y<AVX_SIZE;y++){
-									r1[x*AVX_SIZE+y]+=r0[x*AVX_SIZE+y];
-								}
-							}
-						}
-
-
-						for(int x=0;x<AVX_SIZE;x++){ //set
-							for(int y=0;y<AVX_SIZE;y++){
-								c[cc_os+x*N+y]+=r1[x*AVX_SIZE+y];
-							}
-						}
+						//C11=P1+P4-P5+P7
+						//C12=P3+P5
+						//C21=P2+P4
+						//C22=P1+P3-P2+P6
 						
 					}
 				}
