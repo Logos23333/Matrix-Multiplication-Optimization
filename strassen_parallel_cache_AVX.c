@@ -1,8 +1,8 @@
 /*************************************************************************
-  > File Name: matrix_multi_parallel_cache_AVX.c
+  > File Name: strassen_parallel_cache_AVX.c
 	> Author: logos
 	> Mail: 838341114@qq.com 
-	> Created Time: 2019年04月23日 Tuesday 18时01分44秒
+	> Created Time: 2019年04月28日 Sunday 16时36分44秒
  ************************************************************************/
 
 #include<stdio.h>
@@ -23,6 +23,8 @@ void matrix_gen(float *a,float *b,int N,float seed);
 void print_matrix(float *a,int N);
 float cal_trace(float *a,int N);
 void* matrix_mul(void *arg);
+void small_matrix_mul(float *a, float *b, float *c);
+void matrix_add(float *a, float *b, float *c, int N);
 
 float rand_float(float s){// to produce a random float, 0<seed<1
 	return 4*s*(1-s);
@@ -70,6 +72,50 @@ struct parameter{//to creata a struce which will be passed to the threads as arg
 	int number;
 };
 
+void small_matrix_mul(float *a, float *b, float *c){
+
+	float *a0=a;
+	float *b0=b;
+	float *c0=c;
+
+	__m256 row0=_mm256_loadu_ps(b0); b0+=AVX_SIZE; //the first row of b
+	__m256 row1=_mm256_loadu_ps(b0); b0+=AVX_SIZE;// the second row of b
+	__m256 row2=_mm256_loadu_ps(b0); b0+=AVX_SIZE; // the third row of b
+	__m256 row3=_mm256_loadu_ps(b0); b0+=AVX_SIZE;//the fourth row of b
+	__m256 row4=_mm256_loadu_ps(b0); b0+=AVX_SIZE;
+	__m256 row5=_mm256_loadu_ps(b0); b0+=AVX_SIZE;
+	__m256 row6=_mm256_loadu_ps(b0); b0+=AVX_SIZE;
+	__m256 row7=_mm256_loadu_ps(b0);
+
+	for(int cnt=0;cnt<AVX_SIZE;cnt++){
+		int temp=AVX_SIZE*cnt;
+
+		__m256 c0= _mm256_set1_ps(a0[temp+0]); //a[cnt][0]	
+		__m256 c1= _mm256_set1_ps(a0[temp+1]); //a[cnt][1]
+		__m256 c2= _mm256_set1_ps(a0[temp+2]); //a[cnt][2]
+		__m256 c3= _mm256_set1_ps(a0[temp+3]); //a[cnt][3]
+		__m256 c4= _mm256_set1_ps(a0[temp+4]);
+		__m256 c5= _mm256_set1_ps(a0[temp+5]);
+		__m256 c6= _mm256_set1_ps(a0[temp+6]);
+		__m256 c7= _mm256_set1_ps(a0[temp+7]);
+
+		__m256 temp1=_mm256_add_ps(
+				_mm256_add_ps(_mm256_mul_ps(c0,row0),_mm256_mul_ps(c1,row1)),
+				_mm256_add_ps(_mm256_mul_ps(c2,row2),_mm256_mul_ps(c3,row3))
+				);
+		__m256 temp2=_mm256_add_ps(
+				_mm256_add_ps(_mm256_mul_ps(c4,row4),_mm256_mul_ps(c5,row5)),
+				_mm256_add_ps(_mm256_mul_ps(c6,row6),_mm256_mul_ps(c7,row7))
+				);
+		__m256 row =_mm256_add_ps(temp1,temp2);
+
+		_mm256_storeu_ps(c0+AVX_SIZE*cnt,row);	
+
+}
+
+void matrix_add(float *a, float *b, float *c, int N){
+
+}
 void* matrix_mul(void *arg){
 	struct parameter *p;
 	p=(struct parameter *) arg;
@@ -96,11 +142,11 @@ void* matrix_mul(void *arg){
 				int b_os= k*M*N+j*M; //the address offset of b
 				int c_os= i*M*N+j*M;
 
-				int num= M/AVX_SIZE; // the number of blocks in a row, now the a,b,c is a num*num matrix, AVX*AVX size each block 
+				int num= M/AVX_SIZE/2; // the number of blocks in a row, now the a,b,c is a num*num matrix, AVX*AVX size each block 
 				for(int ii=0;ii<num;ii++){
 					for(int jj=0;jj<num;jj++){//calculating c[ii][jj] = sum(a[ii][kk]*b[kk][jj])
 
-						int cc_os = c_os +ii*AVX_SIZE*N + jj*AVX_SIZE; //the offset of cc
+						int cc_os = c_os +ii*AVX_SIZE*N*2 + jj*AVX_SIZE*2; //the offset of cc
 
 						float r1[AVX_SIZE*AVX_SIZE]={0}; //record
 						for(int kk=0;kk<num;kk++){//calculating a[ii][kk]*b[kk][jj], multiplication of SSE_SIZE*SSE_SIZE matrix			
@@ -108,45 +154,8 @@ void* matrix_mul(void *arg){
 							float r0[AVX_SIZE*AVX_SIZE]={0};
 							int aa_os= a_os + ii*AVX_SIZE*N + kk*AVX_SIZE; //the offset of aa
 							int bb_os= b_os + kk*AVX_SIZE*N + jj*AVX_SIZE; //the offset of bb
+							
 
-							//printf("aa_os=%d\n",aa_os);
-							// data initiating
-							float *a0=a+aa_os; //the first address of block a[i][k];
-							float *b0=b+bb_os; //the first address of block b[k][j];
-							float *c0=c+cc_os;
-
-
-							__m256 row0=_mm256_loadu_ps(b0); b0+=N; //the first row of b
-							__m256 row1=_mm256_loadu_ps(b0); b0+=N;// the second row of b
-							__m256 row2=_mm256_loadu_ps(b0); b0+=N; // the third row of b
-							__m256 row3=_mm256_loadu_ps(b0); b0+=N;//the fourth row of b
-							__m256 row4=_mm256_loadu_ps(b0); b0+=N;
-							__m256 row5=_mm256_loadu_ps(b0); b0+=N;
-							__m256 row6=_mm256_loadu_ps(b0); b0+=N;
-							__m256 row7=_mm256_loadu_ps(b0);
-
-							for(int cnt=0;cnt<AVX_SIZE;cnt++){
-								
-								__m256 c0= _mm256_set1_ps(a0[N*cnt+0]); //a[cnt][0]	
-								__m256 c1= _mm256_set1_ps(a0[N*cnt+1]); //a[cnt][1]
-								__m256 c2= _mm256_set1_ps(a0[N*cnt+2]); //a[cnt][2]
-								__m256 c3= _mm256_set1_ps(a0[N*cnt+3]); //a[cnt][3]
-								__m256 c4= _mm256_set1_ps(a0[N*cnt+4]);
-								__m256 c5= _mm256_set1_ps(a0[N*cnt+5]);
-								__m256 c6= _mm256_set1_ps(a0[N*cnt+6]);
-								__m256 c7= _mm256_set1_ps(a0[N*cnt+7]);
-								
-								__m256 temp1=_mm256_add_ps(
-											_mm256_add_ps(_mm256_mul_ps(c0,row0),_mm256_mul_ps(c1,row1)),
-											_mm256_add_ps(_mm256_mul_ps(c2,row2),_mm256_mul_ps(c3,row3))
-											);
-								__m256 temp2=_mm256_add_ps(
-											_mm256_add_ps(_mm256_mul_ps(c4,row4),_mm256_mul_ps(c5,row5)),
-											_mm256_add_ps(_mm256_mul_ps(c6,row6),_mm256_mul_ps(c7,row7))
-											);
-								__m256 row =_mm256_add_ps(temp1,temp2);
-
-								_mm256_storeu_ps(r0+AVX_SIZE*cnt,row);	
 								
 							}
 
