@@ -10,8 +10,8 @@
 #include<sys/time.h>
 #include<pthread.h>
 
-#define NUM_THREADS 16
-#define M 64
+#define NUM_THREADS 1
+#define M 16
 
 float rand_float(float s){
 	return 4*s*(1-s);
@@ -124,7 +124,15 @@ void* matrix_mul(void *arg){
 				//block mul
 				matrix_mul_blocks(a_copy,b_copy,record);
 
+				printf("a_copy=\n");
+				print_matrix(a_copy,M);
+				printf("b_copy=\n");
+				print_matrix(b_copy,M);
+				printf("record=");
+				print_matrix(record,M);
+
 				matrix_c_add(record,c,N,i,j);
+				print_matrix(c,N);
 			}
 
 		}

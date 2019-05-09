@@ -93,7 +93,7 @@ int main(int argc, char *argv[]){
 	
 	//print_matrix(a,N);
 	//print_matrix(b,N);
-	//print_matrix(c,N);
+	print_matrix(c,N);
 	printf("%f %f",trace,duration);
 		
 }

@@ -12,7 +12,7 @@
 #include<string.h>
 #include<immintrin.h>
 
-#define NUM_THREADS 32
+#define NUM_THREADS 16
 #define M 64
 #define SSE_SIZE 4
 #define AVX_SIZE 8
